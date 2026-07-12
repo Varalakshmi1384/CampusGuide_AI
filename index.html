@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CampusGuide AI</title>
+<style>
+  :root{
+    --bg:#f4f5fb; --card:#ffffff; --ink:#1e2233; --muted:#6b7280;
+    --indigo:#4f46e5; --indigo-dark:#3730a3; --indigo-light:#eef0ff;
+    --green:#16a34a; --amber:#d97706; --red:#dc2626; --border:#e6e8f0;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 14px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .app{ max-width:1000px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; }
+
+  header.top{
+    background:linear-gradient(135deg,var(--indigo),#7c3aed);
+    color:#fff; padding:22px 24px; box-shadow:var(--shadow);
+  }
+  header.top h1{ margin:0; font-size:22px; display:flex; align-items:center; gap:10px; }
+  header.top p{ margin:4px 0 0; opacity:.9; font-size:13.5px; }
+
+  nav.tabs{
+    display:flex; gap:6px; padding:14px 24px 0; background:transparent;
+  }
+  nav.tabs button{
+    border:none; background:var(--card); color:var(--muted); font-weight:600; font-size:14px;
+    padding:10px 18px; border-radius:10px 10px 0 0; cursor:pointer; box-shadow:var(--shadow);
+    border-bottom:3px solid transparent;
+  }
+  nav.tabs button.active{ color:var(--indigo); border-bottom:3px solid var(--indigo); }
+
+  main{ flex:1; padding:20px 24px 40px; }
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  /* ---------- CHAT ---------- */
+  .chat-shell{ background:var(--card); border-radius:16px; box-shadow:var(--shadow); overflow:hidden; }
+  .chat-log{ padding:20px; max-height:56vh; overflow-y:auto; display:flex; flex-direction:column; gap:16px; }
+  .msg{ display:flex; gap:10px; max-width:88%; }
+  .msg.user{ align-self:flex-end; flex-direction:row-reverse; }
+  .bubble{ padding:12px 15px; border-radius:14px; font-size:14.5px; line-height:1.5; }
+  .msg.bot .bubble{ background:var(--indigo-light); color:#312e81; border-bottom-left-radius:4px; }
+  .msg.user .bubble{ background:var(--indigo); color:#fff; border-bottom-right-radius:4px; }
+  .avatar{ width:30px; height:30px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-size:15px;
+    background:#fff; box-shadow:var(--shadow); }
+
+  .service-card{
+    margin-top:8px; background:#fff; border:1px solid var(--border); border-radius:14px;
+    padding:16px; box-shadow:var(--shadow);
+  }
+  .service-card h3{ margin:0 0 10px; font-size:16px; color:var(--indigo-dark); display:flex; align-items:center; gap:8px; }
+  .badge{ display:inline-block; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:99px; background:var(--indigo-light); color:var(--indigo-dark); }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .field{ font-size:13.5px; }
+  .field .label{ color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; display:block; margin-bottom:2px; }
+  details{ margin-top:10px; border-top:1px dashed var(--border); padding-top:10px; }
+  summary{ cursor:pointer; font-weight:600; font-size:13.5px; color:var(--indigo); }
+  ol.steps{ margin:10px 0 0; padding-left:20px; font-size:13.5px; line-height:1.7; }
+  .conf-row{ margin-top:12px; display:flex; align-items:center; gap:10px; }
+  .conf-pill{ font-size:12px; font-weight:700; padding:4px 10px; border-radius:99px; }
+  .conf-high{ background:#dcfce7; color:var(--green); }
+  .conf-mid{ background:#fef3c7; color:var(--amber); }
+  .conf-low{ background:#fee2e2; color:var(--red); }
+  .fb-btn{ border:1px solid var(--border); background:#fff; border-radius:99px; padding:5px 12px; font-size:12.5px; cursor:pointer; }
+  .fb-btn:hover{ background:var(--indigo-light); }
+
+  .suggest-row{ display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 14px; }
+  .chip{ background:#fff; border:1px solid var(--border); color:var(--indigo-dark); font-size:12.5px;
+    padding:7px 12px; border-radius:99px; cursor:pointer; }
+  .chip:hover{ background:var(--indigo-light); }
+
+  .composer{ display:flex; gap:10px; padding:16px 20px; border-top:1px solid var(--border); background:#fafbff; }
+  .composer input{ flex:1; border:1px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; outline:none; }
+  .composer input:focus{ border-color:var(--indigo); }
+  .composer button{ background:var(--indigo); color:#fff; border:none; border-radius:10px; padding:0 22px; font-weight:600; cursor:pointer; }
+  .composer button:hover{ background:var(--indigo-dark); }
+
+  /* ---------- SERVICES ---------- */
+  .search-bar{ display:flex; gap:10px; margin-bottom:16px; }
+  .search-bar input{ flex:1; border:1px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; }
+  .search-bar select{ border:1px solid var(--border); border-radius:10px; padding:12px; font-size:14px; background:#fff; }
+  .svc-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
+  .svc-card{ background:var(--card); border-radius:14px; padding:16px; box-shadow:var(--shadow); border:1px solid var(--border); cursor:pointer; transition:transform .12s; }
+  .svc-card:hover{ transform:translateY(-2px); border-color:var(--indigo); }
+  .svc-card h4{ margin:0 0 6px; font-size:15px; }
+  .svc-card .dept{ font-size:12.5px; color:var(--muted); margin-bottom:10px; }
+  .svc-card .meta{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); }
+
+  /* ---------- DASHBOARD ---------- */
+  .kpi-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:20px; }
+  .kpi-card{ background:var(--card); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); border:1px solid var(--border); }
+  .kpi-card .num{ font-size:26px; font-weight:800; color:var(--indigo-dark); }
+  .kpi-card .lbl{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+
+  .chart-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .chart-card{ background:var(--card); border-radius:14px; padding:18px; box-shadow:var(--shadow); border:1px solid var(--border); }
+  .chart-card h3{ margin:0 0 14px; font-size:14.5px; }
+  .bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; font-size:12.5px; }
+  .bar-label{ width:120px; flex:none; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-track{ flex:1; background:#f1f2f8; border-radius:6px; height:14px; overflow:hidden; }
+  .bar-fill{ height:100%; background:linear-gradient(90deg,var(--indigo),#8b5cf6); border-radius:6px; }
+  .bar-val{ width:28px; text-align:right; font-weight:700; color:var(--indigo-dark); }
+
+  table.recent{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.recent th{ text-align:left; color:var(--muted); font-weight:600; padding:8px 6px; border-bottom:1px solid var(--border); }
+  table.recent td{ padding:9px 6px; border-bottom:1px solid #f0f1f6; }
+
+  .empty{ text-align:center; color:var(--muted); padding:30px; font-size:13.5px; }
+  @media(max-width:680px){ .grid2{grid-template-columns:1fr;} .chart-row{grid-template-columns:1fr;} }
+
+  /* ---------- AUTH ---------- */
+  .top-row{ display:flex; align-items:flex-start; }
+  .auth-slot{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .auth-btn{ background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.4);
+    border-radius:9px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .auth-btn:hover{ background:rgba(255,255,255,.28); }
+  .user-chip{ background:rgba(255,255,255,.18); color:#fff; border-radius:9px; padding:8px 12px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:10px; }
+  .user-chip .logout-btn{ cursor:pointer; background:rgba(255,255,255,.25); border:1px solid rgba(255,255,255,.5); border-radius:7px; padding:5px 10px; font-size:12px; font-weight:700; color:#fff; }
+  .user-chip .logout-btn:hover{ background:rgba(255,255,255,.4); }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(20,22,40,.55); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .modal-overlay.hidden{ display:none; }
+  .modal-card{ background:#fff; border-radius:16px; padding:26px; width:100%; max-width:360px; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+  .modal-card h2{ margin:0 0 4px; font-size:19px; }
+  .modal-card .sub{ margin:0 0 18px; color:var(--muted); font-size:13px; }
+  .modal-card label{ display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin:12px 0 5px; }
+  .modal-card input{ width:100%; border:1px solid var(--border); border-radius:9px; padding:10px 12px; font-size:14px; outline:none; }
+  .modal-card input:focus{ border-color:var(--indigo); }
+  .modal-card .primary-btn{ width:100%; margin-top:18px; background:var(--indigo); color:#fff; border:none; border-radius:9px; padding:11px; font-weight:700; font-size:14.5px; cursor:pointer; }
+  .modal-card .primary-btn:hover{ background:var(--indigo-dark); }
+  .modal-card .switch-line{ margin-top:14px; text-align:center; font-size:13px; color:var(--muted); }
+  .modal-card .switch-line a{ color:var(--indigo); font-weight:600; cursor:pointer; text-decoration:none; }
+  .modal-card .close-x{ float:right; cursor:pointer; color:var(--muted); font-size:18px; line-height:1; }
+  .modal-error{ margin-top:10px; background:#fee2e2; color:var(--red); font-size:12.5px; padding:8px 10px; border-radius:8px; display:none; }
+  .modal-error.show{ display:block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="top-row">
+      <div>
+        <h1>🎓 CampusGuide AI</h1>
+        <p>Ask me about any administrative process — lost ID cards, certificates, hostel admission, scholarships, and more.</p>
+      </div>
+      <div class="auth-slot" id="authSlot"></div>
+    </div>
+  </header>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-overlay hidden" id="authModal">
+    <div class="modal-card">
+      <span class="close-x" id="authClose">✕</span>
+      <h2 id="authTitle">Log in</h2>
+      <p class="sub" id="authSub">Welcome back — log in to save your chat history.</p>
+      <div id="nameField">
+        <label>Full name</label>
+        <input id="authName" placeholder="e.g. Priya Sharma" />
+      </div>
+      <div id="regNumberField">
+        <label>Registration number <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+        <input id="authRegNumber" placeholder="e.g. 21CS1234" />
+      </div>
+      <label>Email</label>
+      <input id="authEmail" type="email" placeholder="you@college.edu" />
+      <label>Password</label>
+      <input id="authPassword" type="password" placeholder="••••••••" />
+      <button class="primary-btn" id="authSubmit">Log in</button>
+      <div class="modal-error" id="authError"></div>
+      <div class="switch-line" id="authSwitch">Don't have an account? <a id="authSwitchLink">Sign up</a></div>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="chat">💬 Chat</button>
+    <button class="tab-btn" data-tab="services">🏢 Services</button>
+    <button class="tab-btn" data-tab="dashboard">📊 Dashboard</button>
+  </nav>
+
+  <main>
+    <!-- CHAT PANEL -->
+    <section id="panel-chat" class="panel active">
+      <div class="chat-shell">
+        <div class="chat-log" id="chatLog"></div>
+        <div class="suggest-row" id="suggestRow"></div>
+        <div class="composer">
+          <input id="chatInput" placeholder="Ask e.g. 'I lost my ID card'" />
+          <button id="sendBtn">Send</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SERVICES PANEL -->
+    <section id="panel-services" class="panel">
+      <div class="search-bar">
+        <input id="svcSearch" placeholder="Search services..." />
+        <select id="svcCategory"><option value="">All categories</option></select>
+      </div>
+      <div class="svc-grid" id="svcGrid"></div>
+    </section>
+
+    <!-- DASHBOARD PANEL -->
+    <section id="panel-dashboard" class="panel">
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3>Most Requested Services</h3>
+          <div id="topServicesChart"></div>
+        </div>
+        <div class="chart-card">
+          <h3>Department-wise Queries</h3>
+          <div id="deptChart"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Recent Queries</h3>
+        <table class="recent" id="recentTable"></table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API = ""; // same origin
+let SESSION_ID = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+
+// ---------- AUTH ----------
+let AUTH_TOKEN = null;   // kept in memory only (no localStorage in this environment)
+let CURRENT_USER = null;
+let authMode = "login";  // or "signup"
+
+function authHeaders(){
+  return AUTH_TOKEN ? {"Authorization":"Bearer "+AUTH_TOKEN} : {};
+}
+
+function renderAuthSlot(){
+  const slot = document.getElementById("authSlot");
+  if(CURRENT_USER){
+    slot.innerHTML = `<div class="user-chip">👤 ${escapeHtml(CURRENT_USER.name)} <span class="logout-btn" id="logoutBtn">Logout</span></div>`;
+    document.getElementById("logoutBtn").onclick = logout;
+  } else {
+    slot.innerHTML = `<button class="auth-btn" id="loginOpenBtn">Log in</button>`;
+    document.getElementById("loginOpenBtn").onclick = ()=>openAuthModal("login");
+  }
+}
+
+function openAuthModal(mode){
+  authMode = mode;
+  document.getElementById("authModal").classList.remove("hidden");
+  document.getElementById("authError").classList.remove("show");
+  document.getElementById("authName").value = "";
+  document.getElementById("authRegNumber").value = "";
+  document.getElementById("authEmail").value = "";
+  document.getElementById("authPassword").value = "";
+  updateAuthModalMode();
+}
+function closeAuthModal(){ document.getElementById("authModal").classList.add("hidden"); }
+
+function updateAuthModalMode(){
+  const isSignup = authMode === "signup";
+  document.getElementById("authTitle").textContent = isSignup ? "Create account" : "Log in";
+  document.getElementById("authSub").textContent = isSignup
+    ? "Sign up to save your chat history and get personalized answers."
+    : "Welcome back — log in to save your chat history.";
+  document.getElementById("nameField").style.display = isSignup ? "block" : "none";
+  document.getElementById("regNumberField").style.display = isSignup ? "block" : "none";
+  document.getElementById("authSubmit").textContent = isSignup ? "Sign up" : "Log in";
+  document.getElementById("authSwitch").innerHTML = isSignup
+    ? 'Already have an account? <a id="authSwitchLink">Log in</a>'
+    : 'Don\'t have an account? <a id="authSwitchLink">Sign up</a>';
+  document.getElementById("authSwitchLink").onclick = ()=>{
+    authMode = isSignup ? "login" : "signup";
+    updateAuthModalMode();
+  };
+}
+
+document.getElementById("authClose").onclick = closeAuthModal;
+document.getElementById("authModal").addEventListener("click", (e)=>{
+  if(e.target.id === "authModal") closeAuthModal();
+});
+
+async function submitAuth(){
+  const errBox = document.getElementById("authError");
+  errBox.classList.remove("show");
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const name = document.getElementById("authName").value.trim();
+  const regNumber = document.getElementById("authRegNumber").value.trim();
+
+  if(!email || !password || (authMode==="signup" && !name)){
+    errBox.textContent = "Please fill in all fields.";
+    errBox.classList.add("show");
+    return;
+  }
+  const path = authMode === "signup" ? "/auth/signup" : "/auth/login";
+  const body = authMode === "signup"
+    ? {name, email, password, registration_number: regNumber || null}
+    : {email, password};
+  try{
+    const res = await fetch(API+path, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if(!res.ok){
+      errBox.textContent = data.detail || "Something went wrong.";
+      errBox.classList.add("show");
+      return;
+    }
+    AUTH_TOKEN = data.token;
+    CURRENT_USER = data.user;
+    renderAuthSlot();
+    closeAuthModal();
+  }catch(e){
+    errBox.textContent = "Couldn't reach the server. Please try again.";
+    errBox.classList.add("show");
+  }
+}
+document.getElementById("authSubmit").onclick = submitAuth;
+document.getElementById("authPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") submitAuth(); });
+
+async function logout(){
+  try{ await fetch(API+"/auth/logout", {method:"POST", headers: authHeaders()}); }catch(e){}
+  AUTH_TOKEN = null;
+  CURRENT_USER = null;
+  renderAuthSlot();
+}
+
+renderAuthSlot();
+
+const SUGGESTIONS = [
+  "I lost my ID card",
+  "How do I get a Bonafide Certificate?",
+  "How can I apply for hostel admission?",
+  "How do I apply for scholarships?"
+];
+
+// ---------- TABS ----------
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-"+btn.dataset.tab).classList.add("active");
+    if(btn.dataset.tab==="services") loadServices();
+    if(btn.dataset.tab==="dashboard") loadDashboard();
+  });
+});
+
+// ---------- CHAT ----------
+const chatLog = document.getElementById("chatLog");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+const suggestRow = document.getElementById("suggestRow");
+
+function addBotGreeting(){
+  addMessage("bot", "👋 Hi! I'm CampusGuide AI. Ask me about any administrative process — lost ID cards, certificates, hostel admission, scholarships, and more.");
+  SUGGESTIONS.forEach(s=>{
+    const chip=document.createElement("button");
+    chip.className="chip"; chip.textContent=s;
+    chip.onclick=()=>{ chatInput.value=s; sendChat(); };
+    suggestRow.appendChild(chip);
+  });
+}
+
+function addMessage(role, html, isHTML){
+  const wrap=document.createElement("div");
+  wrap.className="msg "+role;
+  const av=document.createElement("div");
+  av.className="avatar"; av.textContent = role==="bot" ? "🤖" : "🧑";
+  const bub=document.createElement("div");
+  bub.className="bubble";
+  if(isHTML){ bub.innerHTML = html; } else { bub.textContent = html; }
+  wrap.appendChild(av); wrap.appendChild(bub);
+  chatLog.appendChild(wrap);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return bub;
+}
+
+function confClass(c){
+  if(c>=0.66) return "conf-high";
+  if(c>=0.34) return "conf-mid";
+  return "conf-low";
+}
+
+function renderServiceCard(service, confidence, chatId){
+  if(!service) return "";
+  const docs = (service.required_documents||[]).map(d=>`<li>${escapeHtml(d)}</li>`).join("");
+  const steps = (service.procedure_steps||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join("");
+  const pct = Math.round((confidence||0)*100);
+  return `
+  <div class="service-card">
+    <h3>📌 ${escapeHtml(service.service_name)} <span class="badge">${escapeHtml(service.category||"")}</span></h3>
+    <div class="grid2">
+      <div class="field"><span class="label">Department</span>${escapeHtml(service.department||"-")}</div>
+      <div class="field"><span class="label">Location</span>${escapeHtml(service.building||"")} ${escapeHtml(service.room_number||"")}</div>
+      <div class="field"><span class="label">Fees</span>${escapeHtml(service.fees||"-")}</div>
+      <div class="field"><span class="label">Processing Time</span>${escapeHtml(service.processing_time||"-")}</div>
+      <div class="field"><span class="label">Office Hours</span>${escapeHtml(service.office_hours||"-")}</div>
+      <div class="field"><span class="label">Contact</span>${escapeHtml(service.contact_email||"-")}</div>
+    </div>
+    <div class="field"><span class="label">Required Documents</span><ul style="margin:4px 0 0;padding-left:18px;">${docs}</ul></div>
+    <details>
+      <summary>View step-by-step procedure</summary>
+      <ol class="steps">${steps}</ol>
+    </details>
+    <div class="conf-row">
+      <span class="conf-pill ${confClass(confidence)}">Confidence: ${pct}%</span>
+      <button class="fb-btn" onclick="sendFeedback(${chatId},5,this)">👍 Helpful</button>
+      <button class="fb-btn" onclick="sendFeedback(${chatId},2,this)">👎 Not helpful</button>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+async function sendChat(){
+  const q = chatInput.value.trim();
+  if(!q) return;
+  addMessage("user", q);
+  chatInput.value="";
+  const loadingBubble = addMessage("bot", "Thinking…");
+  try{
+    const res = await fetch(API+"/chat", {
+      method:"POST", headers:{"Content-Type":"application/json", ...authHeaders()},
+      body: JSON.stringify({session_id: SESSION_ID, query: q})
+    });
+    const data = await res.json();
+    loadingBubble.textContent = data.answer || "Sorry, I couldn't generate a response.";
+    if(data.service){
+      const card = renderServiceCard(data.service, data.confidence_score, data.chat_id);
+      const holder = document.createElement("div");
+      holder.innerHTML = card;
+      loadingBubble.parentElement.appendChild(holder.firstElementChild);
+    }
+  }catch(e){
+    loadingBubble.textContent = "⚠️ Couldn't reach the server. Please try again.";
+  }
+}
+sendBtn.onclick = sendChat;
+chatInput.addEventListener("keydown", e=>{ if(e.key==="Enter") sendChat(); });
+
+async function sendFeedback(chatId, rating, btn){
+  try{
+    await fetch(API+"/feedback", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({chat_id: chatId, rating: rating})
+    });
+    btn.parentElement.querySelectorAll(".fb-btn").forEach(b=>b.disabled=true);
+    btn.textContent = rating>=4 ? "✅ Thanks!" : "✅ Noted";
+  }catch(e){}
+}
+
+addBotGreeting();
+
+// ---------- SERVICES ----------
+let ALL_SERVICES = [];
+async function loadServices(){
+  if(ALL_SERVICES.length) return renderServices();
+  const res = await fetch(API+"/services");
+  const data = await res.json();
+  ALL_SERVICES = data.services || [];
+  const cats = [...new Set(ALL_SERVICES.map(s=>s.category))].sort();
+  const sel = document.getElementById("svcCategory");
+  cats.forEach(c=>{
+    const opt=document.createElement("option"); opt.value=c; opt.textContent=c; sel.appendChild(opt);
+  });
+  renderServices();
+}
+function renderServices(){
+  const q = document.getElementById("svcSearch").value.toLowerCase();
+  const cat = document.getElementById("svcCategory").value;
+  const grid = document.getElementById("svcGrid");
+  grid.innerHTML = "";
+  const filtered = ALL_SERVICES.filter(s=>{
+    const matchQ = !q || (s.service_name+s.keywords).toLowerCase().includes(q);
+    const matchC = !cat || s.category===cat;
+    return matchQ && matchC;
+  });
+  if(!filtered.length){ grid.innerHTML = '<div class="empty">No services found.</div>'; return; }
+  filtered.forEach(s=>{
+    const card = document.createElement("div");
+    card.className = "svc-card";
+    card.innerHTML = `
+      <h4>${escapeHtml(s.service_name)} <span class="badge">${escapeHtml(s.category)}</span></h4>
+      <div class="dept">${escapeHtml(s.department)} · ${escapeHtml(s.building)} ${escapeHtml(s.room_number||"")}</div>
+      <div class="meta"><span>💰 ${escapeHtml(s.fees)}</span><span>⏱ ${escapeHtml(s.processing_time)}</span></div>
+    `;
+    card.onclick = ()=>{
+      document.querySelector('[data-tab="chat"]').click();
+      chatInput.value = s.sample_query || s.service_name;
+      sendChat();
+    };
+    grid.appendChild(card);
+  });
+}
+document.getElementById("svcSearch").addEventListener("input", renderServices);
+document.getElementById("svcCategory").addEventListener("change", renderServices);
+
+// ---------- DASHBOARD ----------
+async function loadDashboard(){
+  const res = await fetch(API+"/analytics");
+  const d = await res.json();
+
+  const kpis = [
+    {num:d.total_queries, lbl:"Total Queries"},
+    {num:Math.round((d.avg_confidence||0)*100)+"%", lbl:"Avg Confidence"},
+    {num:(d.avg_response_time_ms||0)+" ms", lbl:"Avg Response Time"},
+    {num:d.avg_feedback_rating || "—", lbl:"Avg Rating"},
+    {num:d.unanswered_count||0, lbl:"Unanswered Queries"},
+  ];
+  document.getElementById("kpiRow").innerHTML = kpis.map(k=>`
+    <div class="kpi-card"><div class="num">${k.num}</div><div class="lbl">${k.lbl}</div></div>
+  `).join("");
+
+  renderBarChart("topServicesChart", d.top_services || []);
+  renderBarChart("deptChart", d.department_breakdown || []);
+
+  const rows = d.recent_queries || [];
+  const table = document.getElementById("recentTable");
+  if(!rows.length){
+    table.innerHTML = '<tr><td class="empty">No queries yet — try the Chat tab!</td></tr>';
+  } else {
+    table.innerHTML = `
+      <tr><th>Time</th><th>Query</th><th>Confidence</th></tr>
+      ${rows.map(r=>`<tr>
+        <td>${new Date(r.created_at).toLocaleTimeString()}</td>
+        <td>${escapeHtml(r.query)}</td>
+        <td>${Math.round((r.confidence_score||0)*100)}%</td>
+      </tr>`).join("")}
+    `;
+  }
+}
+
+function renderBarChart(elId, pairs){
+  const el = document.getElementById(elId);
+  if(!pairs.length){ el.innerHTML = '<div class="empty">No data yet</div>'; return; }
+  const max = Math.max(...pairs.map(p=>p[1]));
+  el.innerHTML = pairs.map(([label,val])=>`
+    <div class="bar-row">
+      <div class="bar-label">${escapeHtml(label)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(val/max*100)}%"></div></div>
+      <div class="bar-val">${val}</div>
+    </div>
+  `).join("");
+}
+</script>
+</body>
+</html>
